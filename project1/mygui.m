@@ -119,13 +119,13 @@ function Pause_pushbutton_Callback(hObject, eventdata, handles)
 text = get(hObject, 'String');
 % If the simulation were running:
 t=getappdata(0,'t1');
-if strcmp(text, 'ÔÝÍ£') == 1
-   set(hObject, 'String', '¼ÌÐø');
+if strcmp(text, 'Pause') == 1
+   set(hObject, 'String', 'Countinue');
     % pause it:
   stop(t);
 else
     % otherwise, "resume" it:
-    set(hObject, 'String', 'ÔÝÍ£');
+    set(hObject, 'String', 'Pause');
     start(t);
 end;
 return;
