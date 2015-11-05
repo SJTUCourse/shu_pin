@@ -17,14 +17,14 @@
 % I/O Connections Overview:
 %    Please refer to your hardware reference manual.
 
-function StaticAO()
-diary on;
+function StaticAO
 % Make Automation.BDaq assembly visible to MATLAB.
 BDaq = NET.addAssembly('Automation.BDaq');
 
 % Define how many data to makeup a waveform period.
 s=getappdata(0,'sr');
-oneWavePointCount = int32(s);                                                          %sampling rate                                      
+f=getappdata(0,'fs');
+oneWavePointCount = int32(s/f);                                                          %sampling rate                                      
 
 % Configure the following three parameters before running the demo.
 % The default device of project is demo device, users can set other devices 
@@ -45,7 +45,6 @@ errorCode = Automation.BDaq.ErrorCode.Success;
 
 % Step 1: Create a 'InstantAoCtrl' for Instant AO function.
 instantAoCtrl = Automation.BDaq.InstantAoCtrl();
-
 try
     % Step 2: Select a device by device number or device description and 
     % specify the access mode. In this example we use 
@@ -67,20 +66,18 @@ try
 
     % Output data
     scaleData = NET.createArray('System.Double', int32(64));
-    f=getappdata(0,'fs');
     s=getappdata(0,'sr');
     t = timer('TimerFcn',{@TimerCallback, instantAoCtrl, ...
         oneWavePointCount, scaleData, scaledWaveForm, channelStart, ...
-        channelCount}, 'period',1/(s*f), 'executionmode', 'fixedrate', ...
-        'StartDelay', 1);
+        channelCount}, 'period',1/s, 'executionmode', 'fixedrate');
     setappdata(0,'t1',t);
     start(t);
-    input('Outputting data...Press Enter key to quit!', 's');
-    if isvalid(t)
-    disp('StaticAO is completed compulsorily!');    
-    stop(t);
-    delete(t); 
-    end
+    %input('Outputting data...Press Enter key to quit!', 's');
+    %if isvalid(t)
+    %disp('StaticAO is completed compulsorily!');    
+    %stop(t);
+    %delete(t); 
+    %end
 catch e
     % Something is wrong. 
     if BioFailed(errorCode)    
@@ -89,13 +86,14 @@ catch e
     else
         errStr = e.message;
     end
-    disp(errStr);
+    %disp(errStr);
+    
 end   
 
 % Step 4: Close device and release any allocated resource.
-instantAoCtrl.Dispose();
+setappdata(0,'ctrl',instantAoCtrl);
+%instantAoCtrl.Dispose();
 H5T.close(WaveStyle);
-diary off;
 end
 
 function errorcode = GenerateWaveform(instantAoCtrl, channelStart,...
@@ -232,7 +230,7 @@ end
 
 function TimerCallback(obj, event, instantAoCtrl, oneWavePointCount, ...
     scaleData, scaledWaveForm, channelStart, channelCount)
-persistent i ;
+i=getappdata(0,'number');
 if isempty(i)
     i = 0;
 else
@@ -242,27 +240,30 @@ end
 l=getappdata(0,'lt');
 f=getappdata(0,'fs');
 s=getappdata(0,'sr');
-if i<l*f*s
+if i<l*s
     r=rem(i,oneWavePointCount);%remiander
-    x=i/(f*s);
+    x=i/s;
     y=scaledWaveForm.Get(r);
-    axis([x-1,x+1,-1,6]);
-    h=plot(x,y,'*','XDataSource','x','YDataSource','y');
-    hold on;
-    refreshdata(h,'caller');
-    drawnow;
+    h=getappdata(0,'Line');
+    ha=getappdata(0,'hw');
+    xdata=get(h,'Xdata');
+    ydata=get(h,'Ydata');
+    set(h,'Xdata',[xdata,x],'Ydata',[ydata,y]);
+    set(ha.axes1,'Xlim',[x-1,x+1],'Ylim',[-1,6]);
     scaleData.Set(0,y);
     errorCode = instantAoCtrl.Write(channelStart,...
               channelCount, scaleData);
     if BioFailed(errorCode)
         e = MException('DAQWarning:Notcompleted', ...
-            'StaticAO is completed compulsorily!');
-        throw (e);
+            'No link to USB');        
+        hw=getappdata(0,'hw');
+        set(hw.warning,'string',e.message);
+        %throw (e);
     end
 else
-    fprintf('\nStaticAO is completed, and press Enter key to quit!');
     clear functions;
     stop(obj);
     delete(obj);
 end
+setappdata(0,'number',i);
 end

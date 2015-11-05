@@ -1,5 +1,6 @@
 function varargout = gui2(varargin)
 % GUI2 MATLAB code for gui2.fig
+
 %      GUI2, by itself, creates a new GUI2 or raises the existing
 %      singleton*.
 %
@@ -53,11 +54,17 @@ function gui2_OpeningFcn(hObject, eventdata, handles, varargin)
 % varargin   command line arguments to gui2 (see VARARGIN)
 
 % Choose default command line output for gui2
-handles.output = hObject;
 
+handles.output = hObject;
+axes(handles.axes1);
+h=line;
+set(h,'Xdata',[],'Ydata',[],'Marker','*','LineStyle','None');
+setappdata(0,'Line',h);
+setappdata(0,'hw',handles);
 % Update handles structure
 guidata(hObject, handles);
 
+%setappdata(0,'axes1',handles.axes1);
 % UIWAIT makes gui2 wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
@@ -78,16 +85,10 @@ function pushbutton1_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+setappdata(0,'number',0);
+hl=getappdata(0,'Line');
+set(hl,'Xdata',[],'Ydata',[]);
 trial
-a=importdata('diary');
-b=a(1);
-b=b{1};
-delete diary
-if size(b)==[1 36]
-    set(handles.warning,'string',b);
-end
-
-
 
 function edit1_Callback(hObject, eventdata, handles)
 % hObject    handle to edit1 (see GCBO)
@@ -95,11 +96,15 @@ function edit1_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hints: get(hObject,'String') returns contents of edit1 as text
-%        str2double(get(hObject,'String')) returns contents of edit1 as a double
-fs=str2double(get(handles.edit1,'String'));
-tips1=strcat('(<',num2str(round(1000/fs)),')');
-set(handles.tip2,'string',tips1);
-setappdata(0,'fs',fs);
+%        str2double(get(hObject,'String')) returns contents of edit1 as a
+%        double    str2double
+fs=get(handles.edit1,'String');
+if str2num(fs)>0
+    setappdata(0,'fs',str2num(fs));
+    set(handles.warning,'string','');
+else
+    set(handles.warning,'string','Please input a positive number');
+end
 
 % --- Executes during object creation, after setting all properties.
 function edit1_CreateFcn(hObject, eventdata, handles)
@@ -122,10 +127,13 @@ function edit2_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of edit2 as text
 %        str2double(get(hObject,'String')) returns contents of edit2 as a double
 f=getappdata(0,'fs');
-sr=str2double(get(handles.edit2,'String'));
-tips2=strcat('(<',num2str(round(1000/sr)),')');
-set(handles.tip1,'string',tips2);
-setappdata(0,'sr',sr);
+sr=get(handles.edit2,'String');
+if str2num(sr)>0
+    setappdata(0,'sr',str2num(sr));
+    set(handles.warning,'string','');
+else
+    set(handles.warning,'string','Please input a positive number');
+end
 if f*sr>0
     set(handles.pushbutton1, 'Enable', 'on');
     set(handles.Pause_pushbutton, 'Enable', 'on');
@@ -154,9 +162,9 @@ text = get(hObject, 'String');
 % If the simulation were running:
 t=getappdata(0,'t1');
 if strcmp(text, 'Pause') == 1
-   set(hObject, 'String', 'Countinue');
+    set(hObject, 'String', 'Countinue');
     % pause it:
-  stop(t);
+    stop(t);
 else
     % otherwise, "resume" it:
     set(hObject, 'String', 'Pause');
@@ -222,6 +230,9 @@ function pushbutton3_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 t=getappdata(0,'t1');
-stop(t);
-delete(t);
-quit;
+Ctrl=getappdata(0,'ctrl');
+if isvalid(t)
+    stop(t);
+    delete(t);
+end
+Ctrl.Dispose();
